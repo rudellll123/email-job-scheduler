@@ -1,4 +1,4 @@
-import express, { type ErrorRequestHandler } from 'express';
+﻿import express, { type ErrorRequestHandler } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -12,6 +12,7 @@ import passport from './auth/passport.js';
 import { sessionMiddleware } from './auth/session.js';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
+import { sendersRouter } from './routes/senders.js';
 
 export function createApp() {
   const app = express();
@@ -28,6 +29,7 @@ export function createApp() {
 
   app.use('/api/health', healthRouter);
   app.use('/api/auth', authRouter);
+  app.use('/api/senders', sendersRouter);
 
   app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
@@ -54,3 +56,4 @@ export function createApp() {
 
   return app;
 }
+
