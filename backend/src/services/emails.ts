@@ -4,6 +4,7 @@ import sanitizeHtml from 'sanitize-html'
 import { db } from '../db/client.js'
 import { campaigns, emails, senders } from '../db/schema.js'
 import { notFound } from '../lib/errors.js'
+import { enqueueEmailJob } from '../queue/emailQueue.js'
 import type { ScheduleCampaignInput } from '../schemas/emails.js'
 
 export interface ScheduleCampaignArgs extends ScheduleCampaignInput {
@@ -59,7 +60,7 @@ export async function scheduleCampaign(args: ScheduleCampaignArgs) {
   const baseKey = idempotencyKey ?? crypto.randomUUID()
   const start = new Date(startAt)
 
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [campaign] = await tx
       .insert(campaigns)
       .values({
@@ -93,6 +94,12 @@ export async function scheduleCampaign(args: ScheduleCampaignArgs) {
 
     return { campaign, emails: createdEmails }
   })
+
+  // Enqueue only after the transaction has committed, so a job is never
+  // created for a row that doesn't actually exist in the database.
+  await Promise.all(result.emails.map((e) => enqueueEmailJob(e.id, e.scheduledAt)))
+
+  return result
 }
 
 export async function listScheduled(userId: string) {
@@ -109,6 +116,8 @@ export async function listSent(userId: string) {
     orderBy: (e, { desc }) => [desc(e.sentAt)],
   })
 }
+
+
 
 
 

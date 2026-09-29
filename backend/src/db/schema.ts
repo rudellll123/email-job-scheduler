@@ -298,3 +298,12 @@ export type Email = typeof emails.$inferSelect;
 export type EmailStatus =
   (typeof emailStatus.enumValues)[number];
 
+
+import { relations } from 'drizzle-orm'
+
+export const emailsRelations = relations(emails, ({ one }) => ({
+  sender: one(senders, {
+    fields: [emails.senderId],
+    references: [senders.id],
+  }),
+}))
