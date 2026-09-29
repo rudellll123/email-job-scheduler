@@ -1,4 +1,4 @@
-import 'dotenv/config';
+﻿import 'dotenv/config';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -18,6 +18,7 @@ const schema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().default(''),
   SLACK_CLIENT_ID: z.string().default(''),
   SLACK_CLIENT_SECRET: z.string().default(''),
+  SLACK_REDIRECT_URI: z.string().url().default('https://localhost:4001/api/slack/callback'),
 
   WORKER_CONCURRENCY: z.coerce.number().int().min(1).default(5),
   MIN_DELAY_SECONDS: z.coerce.number().min(0).default(2),

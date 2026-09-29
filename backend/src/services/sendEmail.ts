@@ -1,4 +1,4 @@
-﻿import { and, eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
 import { db } from '../db/client.js'
 import { campaigns, emails } from '../db/schema.js'
@@ -6,6 +6,7 @@ import { env } from '../config/env.js'
 import { logger } from '../lib/logger.js'
 import { sendViaSender } from './mailer.js'
 import { effectiveHourlyLimit, releaseSendSlot, reserveSendSlot } from './rateLimiter.js'
+import { notifyRateLimitHit } from './slack.js'
 
 /**
  * Returned when the send was postponed by the rate limiter. The caller (the
@@ -21,6 +22,8 @@ export type ProcessResult = { deferredUntil: Date } | null
  *  2. Reserves a send slot for the sender (hourly cap + minimum delay, atomic
  *     in Redis). If denied, the row goes back to 'scheduled' with a new
  *     scheduledAt and { deferredUntil } is returned. Nothing is dropped.
+ *     When the denial is the HOURLY limit, the user's Slack is notified
+ *     (once per sender per hour window; silent if Slack is not connected).
  *  3. Loads the email + its sender, sends via Ethereal. The sender's slot stays
  *     locked during the send and the minimum delay restarts when it finishes.
  *  4. On success: sending -> sent, records messageId/previewUrl.
@@ -81,6 +84,18 @@ export async function processEmailJob(
       { emailId, senderId: row.senderId, reason: slot.reason, deferredUntil },
       'send deferred by rate limiter',
     )
+
+    // Only the HOURLY limit alerts Slack (not the short min-delay wait).
+    // notifyRateLimitHit never throws, so this cannot break the reschedule above.
+    if (slot.reason === 'hourly-limit') {
+      void notifyRateLimitHit({
+        userId: row.userId,
+        senderId: row.senderId,
+        senderEmail: row.sender.email,
+        hourlyLimit,
+        nextWindowStart: slot.nextWindowStart,
+      })
+    }
 
     return { deferredUntil }
   }
