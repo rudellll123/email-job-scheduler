@@ -13,6 +13,7 @@ import { sessionMiddleware } from './auth/session.js';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { sendersRouter } from './routes/senders.js';
+import { emailsRouter } from './routes/emails.js';
 
 export function createApp() {
   const app = express();
@@ -30,6 +31,7 @@ export function createApp() {
   app.use('/api/health', healthRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/senders', sendersRouter);
+  app.use('/api/emails', emailsRouter);
 
   app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
@@ -56,4 +58,5 @@ export function createApp() {
 
   return app;
 }
+
 

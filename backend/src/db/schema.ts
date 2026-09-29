@@ -1,4 +1,4 @@
-import {
+﻿import {
   pgTable,
   pgEnum,
   uuid,
@@ -169,6 +169,10 @@ export const emails = pgTable(
       .notNull()
       .references(() => senders.id),
 
+    position: integer('position')
+      .notNull()
+      .default(0),
+
     toEmail: text('to_email')
       .notNull(),
 
@@ -293,3 +297,4 @@ export type Email = typeof emails.$inferSelect;
 
 export type EmailStatus =
   (typeof emailStatus.enumValues)[number];
+
