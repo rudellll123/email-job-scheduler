@@ -1,4 +1,4 @@
-﻿import { Worker } from 'bullmq'
+﻿import { DelayedError, Worker } from 'bullmq'
 
 import { createRedis } from './lib/redis.js'
 import { logger } from './lib/logger.js'
@@ -12,8 +12,16 @@ async function main() {
 
   const worker = new Worker<EmailJobData>(
     EMAIL_QUEUE_NAME,
-    async (job) => {
-      await processEmailJob(job.data.emailId, job.attemptsMade, job.opts.attempts ?? 1)
+    async (job, token) => {
+      const result = await processEmailJob(job.data.emailId, job.attemptsMade, job.opts.attempts ?? 1)
+
+      if (result) {
+        // Rate limiter postponed this send. Move THIS job to the new time
+        // (same job id, so idempotency holds) and tell BullMQ it was delayed,
+        // not failed or completed.
+        await job.moveToDelayed(result.deferredUntil.getTime(), token)
+        throw new DelayedError()
+      }
     },
     {
       connection: createRedis(),
